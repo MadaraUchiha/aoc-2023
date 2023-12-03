@@ -9,11 +9,9 @@ pub struct RawSchematic {
 
 impl RawSchematic {
     fn is_component(&self, coords: &(u32, u32)) -> bool {
-        if let Some(c) = self.map.get(coords) {
-            !c.is_ascii_digit() && *c != '.'
-        } else {
-            false
-        }
+        self.map
+            .get(coords)
+            .is_some_and(|c| !c.is_ascii_digit() && *c != '.')
     }
 }
 
@@ -63,7 +61,7 @@ impl TryFrom<&str> for Schematic {
                     .collect::<Vec<_>>()
             })
             .flatten()
-            .collect::<HashMap<_, _>>();
+            .collect();
 
         let raw_schematic = RawSchematic { map };
         let numbers = find_numbers(&raw_schematic)?;
@@ -84,15 +82,7 @@ fn find_numbers(RawSchematic { map }: &RawSchematic) -> Result<Vec<SchematicNumb
         .collect::<HashMap<_, _>>();
 
     let mut sorted_coordinates = filtered_schematic.keys().collect_vec();
-    sorted_coordinates.sort_by(
-        |(x1, y1), (x2, y2)| {
-            if y1 == y2 {
-                x1.cmp(x2)
-            } else {
-                y1.cmp(y2)
-            }
-        },
-    );
+    sorted_coordinates.sort_by_key(|(x, y)| (y, x));
 
     let mut batches = Vec::new();
     let mut slice_start = 0;
