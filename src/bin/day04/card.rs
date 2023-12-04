@@ -1,4 +1,4 @@
-use std::num::ParseIntError;
+use std::{num::ParseIntError, str::FromStr};
 
 use anyhow::*;
 
@@ -26,10 +26,10 @@ impl Card {
     }
 }
 
-impl TryFrom<&str> for Card {
-    type Error = anyhow::Error;
+impl FromStr for Card {
+    type Err = anyhow::Error;
 
-    fn try_from(value: &str) -> Result<Self> {
+    fn from_str(value: &str) -> Result<Self> {
         let err = || anyhow!("Parse Error :(");
         let (prefix, numbers) = value.split_once(": ").ok_or_else(err)?;
         let id = prefix
@@ -52,12 +52,12 @@ impl TryFrom<&str> for Card {
 #[derive(Debug, Clone)]
 pub struct Cards(pub Vec<Card>);
 
-impl TryFrom<&str> for Cards {
-    type Error = anyhow::Error;
+impl FromStr for Cards {
+    type Err = anyhow::Error;
 
-    fn try_from(value: &str) -> Result<Self> {
+    fn from_str(value: &str) -> Result<Self> {
         Ok(Cards(
-            value.lines().map(Card::try_from).collect::<Result<_>>()?,
+            value.lines().map(Card::from_str).collect::<Result<_>>()?,
         ))
     }
 }

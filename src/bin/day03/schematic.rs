@@ -1,6 +1,6 @@
 use anyhow::*;
 use itertools::Itertools;
-use std::{collections::HashMap, ops::RangeInclusive};
+use std::{collections::HashMap, ops::RangeInclusive, str::FromStr};
 
 #[derive(Debug, Clone)]
 pub struct RawSchematic {
@@ -48,9 +48,9 @@ impl Schematic {
     }
 }
 
-impl TryFrom<&str> for Schematic {
-    type Error = anyhow::Error;
-    fn try_from(s: &str) -> Result<Self> {
+impl FromStr for Schematic {
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> Result<Self> {
         let map = s
             .lines()
             .enumerate()

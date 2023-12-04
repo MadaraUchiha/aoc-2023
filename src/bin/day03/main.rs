@@ -51,7 +51,7 @@ impl BasicSolution for Day {
     }
 
     fn parse(data: &str) -> Result<Self::Parsed> {
-        data.try_into()
+        data.parse()
     }
 }
 
