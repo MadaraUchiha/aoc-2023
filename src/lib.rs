@@ -102,7 +102,9 @@ pub trait Solution {
     }
 
     fn main() -> anyhow::Result<()> {
+        let paring_time = Instant::now();
         let parsed = Self::final_parse(Self::DATA)?;
+        println!("Parsed in {:?}", paring_time.elapsed());
         let arg = std::env::args().nth(1);
         match arg.as_deref() {
             Some("a") => {
@@ -116,12 +118,12 @@ pub trait Solution {
             _ => {
                 let now_a = Instant::now();
                 println!(
-                    "a: {} ({:?})",
+                    "part 1: {} ({:?})",
                     Self::part1(parsed.clone())?,
                     now_a.elapsed()
                 );
                 let now_b = Instant::now();
-                println!("b: {} ({:?})", Self::part2(parsed)?, now_b.elapsed());
+                println!("part 2: {} ({:?})", Self::part2(parsed)?, now_b.elapsed());
             }
         }
         Ok(())
