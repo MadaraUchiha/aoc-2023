@@ -7,7 +7,7 @@ struct Day;
 mod card;
 
 impl BasicSolution for Day {
-    type Parsed = Cards;
+    type Parsed = Cards<'static>;
     type Answer = u32;
 
     const DATA: &'static str = include_str!("input.txt");
@@ -37,8 +37,8 @@ impl BasicSolution for Day {
         Ok(cards_won.iter().sum())
     }
 
-    fn parse(data: &str) -> Result<Self::Parsed> {
-        data.parse()
+    fn parse(data: &'static str) -> Result<Self::Parsed> {
+        data.try_into()
     }
 }
 
