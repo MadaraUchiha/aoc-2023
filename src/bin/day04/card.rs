@@ -1,15 +1,15 @@
-use std::{num::ParseIntError, str::FromStr};
+use std::str::FromStr;
 
 use anyhow::*;
 
 #[derive(Debug, Clone)]
-pub struct Card {
+pub struct Card<'a> {
     pub id: u8,
-    pub winning_numbers: Vec<u8>,
-    pub actual_numbers: Vec<u8>,
+    pub winning_numbers: Vec<&'a str>,
+    pub actual_numbers: Vec<&'a str>,
 }
 
-impl Card {
+impl<'a> Card<'a> {
     pub fn number_of_winning_cards(&self) -> usize {
         self.winning_numbers
             .iter()
@@ -26,10 +26,10 @@ impl Card {
     }
 }
 
-impl FromStr for Card {
-    type Err = anyhow::Error;
+impl<'a> TryFrom<&'a str> for Card<'a> {
+    type Error = anyhow::Error;
 
-    fn from_str(value: &str) -> Result<Self> {
+    fn try_from(value: &'a str) -> Result<Self> {
         let err = || anyhow!("Parse Error :(");
         let (prefix, numbers) = value.split_once(": ").ok_or_else(err)?;
         let id = prefix
@@ -38,8 +38,8 @@ impl FromStr for Card {
             .ok_or_else(err)?
             .parse::<u8>()?;
         let (winning, actual) = numbers.split_once(" | ").ok_or_else(err)?;
-        let winning_numbers = parse_numbers(winning)?;
-        let actual_numbers = parse_numbers(actual)?;
+        let winning_numbers = parse_numbers(winning);
+        let actual_numbers = parse_numbers(actual);
 
         Ok(Self {
             id,
@@ -50,21 +50,18 @@ impl FromStr for Card {
 }
 
 #[derive(Debug, Clone)]
-pub struct Cards(pub Vec<Card>);
+pub struct Cards<'a>(pub Vec<Card<'a>>);
 
-impl FromStr for Cards {
-    type Err = anyhow::Error;
+impl<'a> TryFrom<&'a str> for Cards<'a> {
+    type Error = anyhow::Error;
 
-    fn from_str(value: &str) -> Result<Self> {
+    fn try_from(value: &'a str) -> Result<Self> {
         Ok(Cards(
-            value.lines().map(Card::from_str).collect::<Result<_>>()?,
+            value.lines().map(Card::try_from).collect::<Result<_>>()?,
         ))
     }
 }
 
-fn parse_numbers(s: &str) -> Result<Vec<u8>> {
-    s.split_ascii_whitespace()
-        .map(|s| s.parse())
-        .collect::<Result<Vec<_>, ParseIntError>>()
-        .map_err(|_| anyhow!("Parse Error :("))
+fn parse_numbers<'a>(s: &'a str) -> Vec<&'a str> {
+    s.split_ascii_whitespace().collect()
 }
