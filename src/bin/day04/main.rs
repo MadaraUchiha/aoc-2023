@@ -23,14 +23,13 @@ impl BasicSolution for Day {
         // 1 of each card we start with
         let mut cards_won = vec![1; input.0.len()];
 
-        for card in input.0.iter() {
+        for (idx, card) in input.0.iter().enumerate() {
             let this_card_winnings = card.number_of_winning_cards();
-            let id = card.id as usize;
-            let this_idx = id - 1;
+            let id: usize = idx + 1;
             // cards starting from next limit by card winning
             for winning_idx in id..id + this_card_winnings {
                 // increase by number of copies of this card we've won so far
-                cards_won[winning_idx as usize] += cards_won[this_idx];
+                cards_won[winning_idx as usize] += cards_won[idx];
             }
         }
 

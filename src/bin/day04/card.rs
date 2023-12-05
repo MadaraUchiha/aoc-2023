@@ -1,24 +1,20 @@
-use std::{num::ParseIntError, str::FromStr};
+use std::str::FromStr;
 
 use anyhow::*;
+use itertools::Itertools;
 
 #[derive(Debug, Clone)]
 pub struct Card {
-    pub id: u8,
-    pub winning_numbers: Vec<u8>,
-    pub actual_numbers: Vec<u8>,
+    pub winners: usize,
 }
 
 impl Card {
     pub fn number_of_winning_cards(&self) -> usize {
-        self.winning_numbers
-            .iter()
-            .filter(|n| self.actual_numbers.contains(n))
-            .count()
+        self.winners as usize
     }
 
     pub fn card_score(&self) -> u32 {
-        match self.number_of_winning_cards() {
+        match self.winners {
             0 => 0,
             // Look at me ma, I know bitwise operators!
             n => 1 << (n - 1),
@@ -31,21 +27,14 @@ impl FromStr for Card {
 
     fn from_str(value: &str) -> Result<Self> {
         let err = || anyhow!("Parse Error :(");
-        let (prefix, numbers) = value.split_once(": ").ok_or_else(err)?;
-        let id = prefix
+        let (_, numbers) = value.split_once(": ").ok_or_else(err)?;
+        let (winning, owned) = numbers.split_once(" | ").ok_or_else(err)?;
+        let winners = winning
             .split_ascii_whitespace()
-            .last()
-            .ok_or_else(err)?
-            .parse::<u8>()?;
-        let (winning, actual) = numbers.split_once(" | ").ok_or_else(err)?;
-        let winning_numbers = parse_numbers(winning)?;
-        let actual_numbers = parse_numbers(actual)?;
+            .filter(|n| owned.split_ascii_whitespace().contains(n))
+            .count();
 
-        Ok(Self {
-            id,
-            winning_numbers,
-            actual_numbers,
-        })
+        Ok(Self { winners })
     }
 }
 
@@ -60,11 +49,4 @@ impl FromStr for Cards {
             value.lines().map(Card::from_str).collect::<Result<_>>()?,
         ))
     }
-}
-
-fn parse_numbers(s: &str) -> Result<Vec<u8>> {
-    s.split_ascii_whitespace()
-        .map(|s| s.parse())
-        .collect::<Result<Vec<_>, ParseIntError>>()
-        .map_err(|_| anyhow!("Parse Error :("))
 }
