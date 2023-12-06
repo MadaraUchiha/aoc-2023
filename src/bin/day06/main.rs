@@ -67,14 +67,13 @@ impl BasicSolution for Day {
             .zip(individual_distances)
             .map(|(time, distance)| Ok((time?, distance?)));
 
-        let races = zip
-            .map(|result| {
-                result.map(|(time, distance_to_beat)| Race {
-                    time,
-                    distance_to_beat,
-                })
+        let races = process_results(zip, |it| {
+            it.map(move |(time, distance_to_beat)| Race {
+                time,
+                distance_to_beat,
             })
-            .try_collect()?;
+            .collect()
+        })?;
 
         Ok(RaceGame {
             individual_races: races,
