@@ -50,35 +50,31 @@ impl BasicSolution for Day {
         let times = time_str
             .strip_prefix("Time: ")
             .ok_or_else(err)?
-            .split_ascii_whitespace()
-            .collect::<Vec<_>>();
+            .split_ascii_whitespace();
 
         let distances = distance_str
             .strip_prefix("Distance: ")
             .ok_or_else(err)?
-            .split_ascii_whitespace()
-            .collect::<Vec<_>>();
+            .split_ascii_whitespace();
 
-        let joined_time: usize = times.iter().join("").parse()?;
-        let joined_distance: usize = distances.iter().join("").parse()?;
+        let joined_time = times.clone().join("").parse()?;
+        let joined_distance = distances.clone().join("").parse()?;
 
-        let individual_times: Vec<usize> =
-            times.into_iter().map(|time| time.parse()).try_collect()?;
-        let individual_distances: Vec<usize> = distances
-            .into_iter()
-            .map(|distance| distance.parse())
-            .try_collect()?;
+        let individual_times = times.map(|time| time.parse());
+        let individual_distances = distances.map(|distance| distance.parse());
 
         let zip = individual_times
-            .into_iter()
-            .zip(individual_distances.into_iter());
+            .zip(individual_distances)
+            .map(|(time, distance)| Ok((time?, distance?)));
 
         let races = zip
-            .map(|(time, distance_to_beat)| Race {
-                time,
-                distance_to_beat,
+            .map(|result| {
+                result.map(|(time, distance_to_beat)| Race {
+                    time,
+                    distance_to_beat,
+                })
             })
-            .collect();
+            .try_collect()?;
 
         Ok(RaceGame {
             individual_races: races,
