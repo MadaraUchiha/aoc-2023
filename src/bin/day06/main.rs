@@ -1,8 +1,6 @@
-use std::ops::RangeInclusive;
-
 use anyhow::*;
 use aoc_2023::*;
-use itertools::Itertools;
+use itertools::{process_results, Itertools};
 
 #[derive(Debug, Clone, Default)]
 struct Race {
@@ -30,25 +28,20 @@ impl BasicSolution for Day {
 
     fn part1(input: Self::Parsed) -> Result<Self::Answer> {
         let err = || anyhow!("Part 1 error :(");
-        Ok(input
-            .individual_races
-            .into_iter()
-            .map(|race| race.winning_times().ok_or_else(err))
-            .collect::<Result<Vec<_>>>()?
-            .into_iter()
-            .map(|range| range.count())
-            .product())
+        process_results(
+            input
+                .individual_races
+                .into_iter()
+                .map(|race| race.winning_times().ok_or_else(err)),
+            |it| it.product(),
+        )
     }
 
     fn part2(input: Self::Parsed) -> Result<Self::Answer> {
         let err = || anyhow!("Part 2 error :(");
         let big_race = input.big_race;
 
-        Ok(big_race
-            .winning_times()
-            .ok_or_else(err)?
-            .into_iter()
-            .count())
+        big_race.winning_times().ok_or_else(err)
     }
 
     fn parse(data: &str) -> Result<Self::Parsed> {
@@ -109,11 +102,11 @@ impl Race {
         })
     }
 
-    fn winning_times(&self) -> Option<RangeInclusive<usize>> {
+    fn winning_times(&self) -> Option<usize> {
         let start = self.minimal_time_to_beat()?;
         let end = self.time - start;
 
-        Some(start..=end)
+        Some(end - start + 1)
     }
 }
 
