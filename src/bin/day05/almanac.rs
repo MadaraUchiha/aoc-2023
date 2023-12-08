@@ -1,6 +1,6 @@
 use anyhow::*;
 use itertools::{process_results, Itertools};
-use std::{mem::swap, ops::Range, str::FromStr};
+use std::{ops::Range, str::FromStr};
 
 #[derive(Debug, Clone)]
 pub struct Almanac {
