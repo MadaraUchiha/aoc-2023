@@ -67,13 +67,7 @@ pub fn main() -> anyhow::Result<()> {
 }
 
 fn count_visited_tiles(energizer: &Energizer, first_ray: Ray) -> usize {
-    let mut visited = HashSet::new();
-
-    for (x, y) in energizer.iter(first_ray) {
-        visited.insert((x, y));
-    }
-
-    visited.len()
+    energizer.iter(first_ray).collect::<HashSet<_>>().len()
 }
 
 #[cfg(test)]
