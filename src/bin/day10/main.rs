@@ -8,7 +8,7 @@ mod maze;
 
 impl BasicSolution for Day {
     type Parsed = Maze;
-    type Answer = u32;
+    type Answer = usize;
     type TestAnswer = Self::Answer;
 
     const DATA: &'static str = include_str!("input.txt");
@@ -21,14 +21,14 @@ impl BasicSolution for Day {
         let err = || anyhow!("Failed to loop");
         let path = input.traverse_loop().ok_or_else(err)?;
 
-        Ok(path.len() as u32 / 2)
+        Ok(path.len() / 2)
     }
 
     fn part2(input: Self::Parsed) -> Result<Self::Answer> {
         let err = || anyhow!("Failed to count ground");
         let points = input.count_tiles_in_loop().ok_or_else(err)?;
 
-        Ok(points.len() as u32)
+        Ok(points)
     }
 
     fn parse(data: &str) -> Result<Self::Parsed> {

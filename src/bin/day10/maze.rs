@@ -1,15 +1,12 @@
-use std::{
-    collections::{HashMap, HashSet},
-    str::FromStr,
-};
+use std::{collections::HashMap, str::FromStr};
 
 use anyhow::*;
 use itertools::Itertools;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Point {
-    pub x: u8,
-    pub y: u8,
+    pub x: isize,
+    pub y: isize,
 }
 
 impl Point {
@@ -34,8 +31,8 @@ pub struct Map(HashMap<Point, Pipe>);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Maze {
     pub map: Map,
-    pub height: u8,
-    pub width: u8,
+    pub height: isize,
+    pub width: isize,
     pub start_position: Point,
 }
 
@@ -49,8 +46,8 @@ impl FromStr for Maze {
         for (y, line) in s.lines().enumerate() {
             for (x, c) in line.chars().enumerate() {
                 let pos = Point {
-                    x: x as u8,
-                    y: y as u8,
+                    x: x.try_into()?,
+                    y: y.try_into()?,
                 };
                 if c == 'S' {
                     start_position = Some(pos.clone());
@@ -128,25 +125,23 @@ impl Maze {
         }
     }
 
-    pub fn count_tiles_in_loop(&self) -> Option<Vec<Point>> {
-        let polygon: HashSet<_> = HashSet::from_iter(self.traverse_loop()?);
-        // let mut count = 0;
-        let mut points = Vec::new();
-        for y in 0..self.height {
-            let mut state = TraversalState::OutsideLoop;
-            for x in 0..self.width {
-                let point = Point { x, y };
-                let pipe = self.get(&point)?;
-                if polygon.contains(&point) {
-                    state = state.next(pipe.clone());
-                } else if state == InsideLoop {
-                    points.push(point);
-                }
-            }
-        }
+    pub fn count_tiles_in_loop(&self) -> Option<usize> {
+        let polygon = self.traverse_loop()?;
 
-        Some(points)
+        let shoelace = shoelace_formula(&polygon);
+
+        Some(shoelace + 1 - (polygon.len() / 2))
     }
+}
+
+fn shoelace_formula(loop_coords: &[Point]) -> usize {
+    loop_coords
+        .iter()
+        .tuple_windows()
+        .map(|(p1, p2)| p1.x * p2.y - p2.x * p1.y)
+        .sum::<isize>()
+        .unsigned_abs()
+        / 2
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -247,36 +242,5 @@ impl Map {
             .filter_map(|dir| Some((dir, point.check(&dir)?)))
             .filter_map(|(dir, pos)| Some((dir, self.0.get(&pos)?.clone())))
             .collect()
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum TraversalState {
-    OutsideLoop,
-    InsideLoop,
-    OnTopBorder,
-    OnBottomBorder,
-}
-
-use Pipe::*;
-use TraversalState::*;
-
-impl TraversalState {
-    fn next(self, pipe: Pipe) -> Self {
-        match (self, pipe) {
-            (OutsideLoop, NorthSouth) => InsideLoop,
-            (OutsideLoop, NorthEast) => OnBottomBorder,
-            (OutsideLoop, SouthEast) => OnTopBorder,
-            (InsideLoop, NorthSouth) => OutsideLoop,
-            (InsideLoop, NorthEast) => OnTopBorder,
-            (InsideLoop, SouthEast) => OnBottomBorder,
-            (OnTopBorder, EastWest) => OnTopBorder,
-            (OnTopBorder, NorthWest) => InsideLoop,
-            (OnTopBorder, SouthWest) => OutsideLoop,
-            (OnBottomBorder, EastWest) => OnBottomBorder,
-            (OnBottomBorder, NorthWest) => OutsideLoop,
-            (OnBottomBorder, SouthWest) => InsideLoop,
-            _ => panic!("Invalid state transition: {:?} -> {:?}", self, pipe),
-        }
     }
 }
