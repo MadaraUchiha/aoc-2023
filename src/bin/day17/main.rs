@@ -1,6 +1,6 @@
 use anyhow::*;
 use aoc_2023::*;
-use crucible::{Field, Vector2D};
+use crucible::*;
 
 mod crucible;
 
@@ -14,21 +14,18 @@ impl BasicSolution for Day {
     const DATA: &'static str = include_str!("input.txt");
     const SAMPLE_DATA: &'static str = include_str!("sample.txt");
     const SAMPLE_ANSWER_A: Self::TestAnswer = 102;
-    const SAMPLE_ANSWER_B: Self::TestAnswer = 0;
+    const SAMPLE_ANSWER_B: Self::TestAnswer = 94;
 
     fn part1(input: Self::Parsed) -> Result<Self::Answer> {
-        let start = Vector2D(0, 0);
-        let end = Vector2D(
-            input.cost_map.len() as isize - 1,
-            input.cost_map[0].len() as isize - 1,
-        );
         input
-            .find_best_lava_path(start, end)
+            .find_best_lava_path::<0, 3>()
             .ok_or_else(|| anyhow!("No path found"))
     }
 
-    fn part2(_input: Self::Parsed) -> Result<Self::Answer> {
-        todo!()
+    fn part2(input: Self::Parsed) -> Result<Self::Answer> {
+        input
+            .find_best_lava_path::<4, 10>()
+            .ok_or_else(|| anyhow!("No path found"))
     }
 
     fn parse(data: &str) -> Result<Self::Parsed> {

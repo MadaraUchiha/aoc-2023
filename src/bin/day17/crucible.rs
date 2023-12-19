@@ -1,6 +1,10 @@
 use anyhow::*;
 use itertools::Itertools;
-use std::{collections::BinaryHeap, ops::Sub, str::FromStr};
+use std::{
+    collections::{BinaryHeap, HashSet},
+    ops::Sub,
+    str::FromStr,
+};
 
 #[derive(Debug, Clone)]
 pub struct Field {
@@ -27,92 +31,75 @@ impl FromStr for Field {
 }
 
 impl Field {
-    pub fn find_best_lava_path(&self, start: Vector2D, end: Vector2D) -> Option<usize> {
-        let path_3_consecutive =
-            |next: &Vector2D, last: &Vector2D, came_from: &Vec<Vec<Option<Vector2D>>>| {
-                let two_ago = came_from[last.1 as usize][last.0 as usize];
-                let two_ago = match two_ago {
-                    Some(last) => last,
-                    None => return false,
-                };
-                let three_ago = came_from[two_ago.1 as usize][two_ago.0 as usize];
-                let three_ago = match three_ago {
-                    Some(before_last) => before_last,
-                    None => return false,
-                };
-
-                let next_direction = next - &last;
-                let last_direction = last - &two_ago;
-                let before_last_direction = &two_ago - &three_ago;
-
-                last_direction == before_last_direction && last_direction == next_direction
-            };
-
+    pub fn find_best_lava_path<const MIN_STEPS: usize, const MAX_STEPS: usize>(
+        &self,
+    ) -> Option<usize> {
+        let start = Vector2D(0, 0);
+        let end = Vector2D(
+            self.cost_map.len() as isize - 1,
+            self.cost_map[0].len() as isize - 1,
+        );
         let mut frontier = BinaryHeap::new();
-        let mut costs_so_far = vec![vec![None; self.cost_map.len()]; self.cost_map[0].len()];
-        let mut came_from = vec![vec![None; self.cost_map.len()]; self.cost_map[0].len()];
+        let mut visited = HashSet::new();
 
-        let (x, y) = start.get()?;
-        let start_cost = self.cost_map[y][x] as usize;
-        frontier.push(PointCost {
-            point: start,
-            cost: start_cost,
-        });
-        costs_so_far[y][x] = Some(0);
+        frontier.push(LavaFlowStepCost(
+            0,
+            LavaFlowStep {
+                point: start,
+                direction: Vector2D(0, 0),
+                in_a_row: 0,
+            },
+        ));
 
-        while let Some(PointCost { point, .. }) = frontier.pop() {
-            if point == end {
-                break;
+        while let Some(LavaFlowStepCost(step_cost, step)) = frontier.pop() {
+            let LavaFlowStep {
+                point, in_a_row, ..
+            } = step;
+
+            if !visited.insert(step) {
+                continue;
+            }
+
+            if in_a_row >= MAX_STEPS {
+                // This step is invalid, it goes over the maximum
+                continue;
+            }
+
+            if point == end && in_a_row >= MIN_STEPS {
+                // We reached the end, and we made enough steps to reach it
+                return Some(step_cost);
             }
 
             for next in self.adjacent(&point) {
-                if path_3_consecutive(&next, &point, &came_from) {
-                    continue;
-                }
-
                 let next_cost = match self.get(&next) {
                     Some(cost) => cost,
-                    None => continue,
+                    None => continue, // out of bounds
                 };
 
-                let last_cost = costs_so_far[point.1 as usize][point.0 as usize]?;
-                let next_cost = last_cost + next_cost;
-                let (x, y) = next.get()?;
-                let current_cost = costs_so_far[y][x];
-                match current_cost {
-                    Some(current_cost) if current_cost <= next_cost => continue,
-                    _ => {
-                        let distance_to_end = (end - next).0.abs() + (end - next).1.abs();
-                        came_from[y][x] = Some(point);
-                        costs_so_far[y][x] = Some(next_cost);
-                        frontier.push(PointCost {
-                            point: next,
-                            cost: next_cost + distance_to_end as usize,
-                        });
-                    }
+                let next_direction = next - point;
+                let must_cotinue_straight = in_a_row + 1 < MIN_STEPS;
+                let going_straight =
+                    next_direction == step.direction || step.direction == Vector2D(0, 0);
+                let going_reverse = next_direction == step.direction.reverse();
+
+                if must_cotinue_straight && !going_straight {
+                    continue; // don't consider steps other than going straight
                 }
+
+                if going_reverse {
+                    continue; // don't go back
+                }
+
+                let next_step = LavaFlowStep {
+                    point: next,
+                    direction: next_direction,
+                    in_a_row: if going_straight { in_a_row + 1 } else { 0 },
+                };
+                frontier.push(LavaFlowStepCost(step_cost + next_cost, next_step));
             }
         }
 
-        let Vector2D(x, y) = end;
-        let x = x as usize;
-        let y = y as usize;
-
-        // print the winning path
-        let mut path = vec![end];
-        let mut current = came_from[y][x];
-        while let Some(point) = current {
-            path.push(point);
-            if point == start {
-                break;
-            }
-            let Vector2D(x, y) = point;
-            current = came_from[y as usize][x as usize];
-        }
-        path.reverse();
-        println!("{:?}", path);
-
-        costs_so_far[y][x].into()
+        None
     }
 
     pub fn get(&self, point: &Vector2D) -> Option<usize> {
@@ -122,28 +109,16 @@ impl Field {
     }
 
     pub fn adjacent(&self, point: &Vector2D) -> Vec<Vector2D> {
-        let adjacent = vec![
-            Vector2D(point.0 - 1, point.1),
+        vec![
             Vector2D(point.0 + 1, point.1),
-            Vector2D(point.0, point.1 - 1),
             Vector2D(point.0, point.1 + 1),
-        ];
-
-        adjacent
-            .into_iter()
-            .filter(|point| self.is_valid(point))
-            .collect()
-    }
-
-    pub fn is_valid(&self, point: &Vector2D) -> bool {
-        match point.get() {
-            None => false,
-            Some((x, y)) => x < self.cost_map.len() && y < self.cost_map[x].len(),
-        }
+            Vector2D(point.0 - 1, point.1),
+            Vector2D(point.0, point.1 - 1),
+        ]
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Vector2D(pub isize, pub isize);
 
 impl Vector2D {
@@ -152,6 +127,10 @@ impl Vector2D {
             return None;
         }
         Some((self.0 as usize, self.1 as usize))
+    }
+
+    pub fn reverse(&self) -> Vector2D {
+        Vector2D(-self.0, -self.1)
     }
 }
 
@@ -171,20 +150,24 @@ impl Sub for &Vector2D {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct PointCost {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct LavaFlowStep {
     point: Vector2D,
-    cost: usize,
+    direction: Vector2D,
+    in_a_row: usize,
 }
 
-impl PartialOrd for PointCost {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct LavaFlowStepCost(usize, LavaFlowStep);
+
+impl PartialOrd for LavaFlowStepCost {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.cost.partial_cmp(&other.cost).map(|o| o.reverse())
+        self.0.partial_cmp(&other.0).map(|o| o.reverse())
     }
 }
 
-impl Ord for PointCost {
+impl Ord for LavaFlowStepCost {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.cost.cmp(&other.cost).reverse()
+        self.0.cmp(&other.0).reverse()
     }
 }
