@@ -7,7 +7,7 @@ struct Day;
 
 impl BasicSolution for Day {
     type Parsed = Garden;
-    type Answer = usize;
+    type Answer = u32;
     type TestAnswer = Self::Answer;
 
     const DATA: &'static str = include_str!("input.txt");
@@ -16,11 +16,11 @@ impl BasicSolution for Day {
     const SAMPLE_ANSWER_B: Self::TestAnswer = 154;
 
     fn part1(input: Self::Parsed) -> Result<Self::Answer> {
-        Ok(input.measure_longest_path::<true>())
+        Ok(input.longest_distance())
     }
 
     fn part2(input: Self::Parsed) -> Result<Self::Answer> {
-        Ok(input.measure_longest_path::<false>())
+        Ok(input.longest_distance_undirected())
     }
 
     fn parse(data: &str) -> Result<Self::Parsed> {
