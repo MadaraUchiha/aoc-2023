@@ -4,6 +4,12 @@ use std::{
     fmt::{Debug, Display},
     time::Instant,
 };
+
+pub mod util {
+    pub mod grid;
+    pub mod point;
+}
+
 pub type IResult<T> = Result<T>;
 
 pub trait BasicSolution {
