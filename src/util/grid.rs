@@ -35,6 +35,16 @@ impl Grid<u8> {
             index: Point::new(0, 0),
         }
     }
+
+    pub fn find(&self, value: u8) -> Option<Point> {
+        let i = self.data.iter().position(|&v| v == value)?;
+        Some(Point::new(i as i32 % self.width, i as i32 / self.width))
+    }
+
+    pub fn in_bounds(&self, point: Point) -> bool {
+        let len = self.data.len() as i32;
+        point.x + point.y * self.width >= 0 && point.x + point.y * self.width < len
+    }
 }
 
 impl<T> Index<Point> for Grid<T> {

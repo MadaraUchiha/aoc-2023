@@ -64,6 +64,12 @@ impl From<u8> for Point {
     }
 }
 
+impl From<(i32, i32)> for Point {
+    fn from(input: (i32, i32)) -> Self {
+        Self::new(input.0, input.1)
+    }
+}
+
 impl Add for Point {
     type Output = Self;
 

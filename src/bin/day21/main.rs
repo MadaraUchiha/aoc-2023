@@ -1,10 +1,16 @@
 use std::{
-    collections::{HashMap, VecDeque},
-    str::FromStr,
+    collections::HashSet,
+    str::{from_utf8, FromStr},
 };
 
 use anyhow::*;
-use aoc_2023::*;
+use aoc_2023::{
+    util::{grid::*, point::*},
+    *,
+};
+
+const GROUND: u8 = b'.';
+const PART_2_STEPS: usize = 26501365;
 
 struct Day;
 
@@ -15,15 +21,29 @@ impl BasicSolution for Day {
 
     const DATA: &'static str = include_str!("input.txt");
     const SAMPLE_DATA: &'static str = include_str!("sample.txt");
-    const SAMPLE_ANSWER_A: Self::TestAnswer = 4361;
-    const SAMPLE_ANSWER_B: Self::TestAnswer = 0;
+    const SAMPLE_ANSWER_A: Self::TestAnswer = 16;
+    const SAMPLE_ANSWER_B: Self::TestAnswer = 167004;
 
     fn part1(input: Self::Parsed) -> Result<Self::Answer> {
-        Ok(input.find_reachable())
+        Ok(input.count_default())
     }
 
-    fn part2(input: Self::Parsed) -> Result<Self::Answer> {
-        todo!()
+    fn part2(mut garden: Self::Parsed) -> Result<Self::Answer> {
+        garden.exapnd();
+        let b0 = garden.count_reachable(garden.start, 65) as isize;
+        let b1 = garden.count_reachable(garden.start, 65 + 131) as isize;
+        let b2 = garden.count_reachable(garden.start, 65 + 131 + 131) as isize;
+
+        let n = PART_2_STEPS / 131;
+
+        let det_a: f64 = -2.0;
+        let det_a0: f64 = -b0 as f64 + 2.0 * b1 as f64 - b2 as f64;
+        let det_a1: f64 = 3.0 * b0 as f64 - 4.0 * b1 as f64 + b2 as f64;
+        let det_a2: f64 = -2.0 * b0 as f64;
+        let x0: usize = (det_a0 / det_a) as usize;
+        let x1: usize = (det_a1 / det_a) as usize;
+        let x2: usize = (det_a2 / det_a) as usize;
+        Ok(x0 * n * n + x1 * n + x2)
     }
 
     fn parse(data: &str) -> Result<Self::Parsed> {
@@ -37,79 +57,70 @@ pub fn main() -> anyhow::Result<()> {
 
 #[derive(Debug, Clone)]
 struct Garden {
-    map: HashMap<(usize, usize), Tile>,
-    start: (usize, usize),
+    steps: usize,
+    map: Grid<u8>,
+    start: Point,
 }
 
 impl Garden {
-    fn find_reachable(&self) -> usize {
-        let mut frontier = VecDeque::new();
-        let mut minimal_steps = HashMap::new();
-        frontier.push_back((self.start, 0));
-        minimal_steps.insert(self.start, 0);
-        while let Some((pos, steps)) = frontier.pop_front() {
-            if steps > 64 {
-                continue;
-            }
+    fn count_default(&self) -> usize {
+        self.count_reachable(self.start, self.steps)
+    }
+    fn count_reachable(&self, start: Point, steps: usize) -> usize {
+        self.find_reachable(start, steps).len()
+    }
 
-            for adj in adjacent(pos) {
-                let Some(tile) = self.map.get(&adj) else {
-                    continue;
-                };
-                if tile == &Tile::Rock {
-                    continue;
+    fn find_reachable(&self, start: Point, steps: usize) -> HashSet<Point> {
+        let mut positions: HashSet<Point> = HashSet::new();
+        positions.insert(start);
+
+        for _ in 0..steps {
+            let mut new_positions: HashSet<Point> = HashSet::new();
+            for position in positions {
+                for direction in ADJACENT {
+                    let new_position = position + direction;
+                    if self.map.in_bounds(new_position) && self.map[new_position] == GROUND {
+                        new_positions.insert(new_position);
+                    }
                 }
-                if let None = minimal_steps.get(&adj) {
-                    minimal_steps.insert(adj, steps + 1);
-                    frontier.push_back((adj, steps + 1));
+            }
+            positions = new_positions;
+        }
+        positions
+    }
+
+    fn exapnd(&mut self) {
+        let mut new_map = String::new();
+        for _ in 0..5 {
+            let rows = self.map.data.chunks(self.map.width as usize);
+            for row in rows {
+                let row = from_utf8(row).unwrap();
+                for _ in 0..5 {
+                    new_map.push_str(row);
                 }
+                new_map.push('\n');
             }
         }
-
-        minimal_steps
-            .into_iter()
-            .filter(|(_, steps)| steps % 2 == 0)
-            .count()
+        self.start = Point::new(self.map.width * 5 / 2, self.map.height * 5 / 2);
+        self.map = Grid::parse(&new_map);
     }
 }
 
-fn adjacent((x, y): (usize, usize)) -> impl Iterator<Item = (usize, usize)> {
-    let diffs = [(-1, 0), (1, 0), (0, -1), (0, 1)];
-    diffs
-        .into_iter()
-        .filter_map(move |(dx, dy)| Some((x.checked_add_signed(dx)?, y.checked_add_signed(dy)?)))
-}
 impl FromStr for Garden {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut map = HashMap::new();
-        let mut start = None;
-        for (y, line) in s.lines().enumerate() {
-            for (x, c) in line.chars().enumerate() {
-                let tile = match c {
-                    '.' => Tile::Ground,
-                    '#' => Tile::Rock,
-                    'S' => {
-                        start = Some((x, y));
-                        Tile::Ground
-                    }
-                    _ => bail!("invalid char"),
-                };
-                map.insert((x, y), tile);
-            }
-        }
-        Ok(Self {
-            map,
-            start: start.ok_or_else(|| anyhow!("no start"))?,
-        })
-    }
-}
+        let (steps, map) = s
+            .split_once("\n\n")
+            .ok_or_else(|| anyhow!("No steps found"))?;
+        let steps = steps.parse()?;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Tile {
-    Ground,
-    Rock,
+        let mut map = Grid::parse(map);
+        let start = map.find(b'S').ok_or_else(|| anyhow!("No start found"))?;
+        map[start] = b'.';
+
+        Ok(Self { steps, map, start })
+    }
 }
 
 #[cfg(test)]
